@@ -77,11 +77,15 @@
         <HeaderAlert />
     </div>
 </template>
+
 <script>
-import About from '@/components/page/About';
-import { languages, RTL_LANGUAGES } from '../../lang';
 import { mapActions, mapState } from 'vuex';
+import { auth, db } from '@/firebase'; // Import Firebase configuration
+import About from '@/components/page/About';
 import HeaderAlert from './HeaderAlert.vue';
+import { languages, RTL_LANGUAGES } from '../../lang';
+import { onAuthStateChanged } from 'firebase/auth';
+import { doc, getDoc } from 'firebase/firestore';
 
 export default {
     components: {
@@ -93,6 +97,8 @@ export default {
             aboutDialog: false,
             languages,
             menuMobile: false,
+            userEmail: null,
+            emailContent: null,
         };
     },
     computed: {
@@ -123,10 +129,35 @@ export default {
         changeTheme(dark) {
           this.$vuetify.theme.dark = dark;
           localStorage.setItem('darkTheme', dark);
+        },
+        async getEmailContent(userEmail) {
+            try {
+                const docRef = doc(db, "emails", userEmail);
+                const docSnap = await getDoc(docRef);
+                if (docSnap.exists()) {
+                    this.emailContent = docSnap.data();
+                    console.log("Email content:", this.emailContent);
+                } else {
+                    console.log("No such document!");
+                }
+            } catch (error) {
+                console.error("Error getting document:", error);
+            }
         }
     },
+    mounted() {
+        onAuthStateChanged(auth, (user) => {
+            if (user) {
+                this.userEmail = user.email;
+                this.getEmailContent(this.userEmail);
+            } else {
+                console.log("No user is signed in.");
+            }
+        });
+    }
 };
 </script>
+
 <style lang="scss" scoped>
 .header {
     z-index: 1;
